@@ -555,12 +555,12 @@ fn resolve_memory_ptr<'ctx>(
     builder: &Builder<'ctx>,
     intrinsics: &Intrinsics<'ctx>,
     context: &'ctx Context,
-    module: Rc<RefCell<Module>>,
+    module: Rc<RefCell<Module<'ctx>>>,
     function: &FunctionValue<'ctx>,
     state: &mut State<'ctx>,
-    ctx: &mut CtxType<'ctx>,
+    ctx: &mut CtxType<'static, 'ctx>,
     memarg: &MemoryImmediate,
-    ptr_ty: PointerType,
+    ptr_ty: PointerType<'ctx>,
     value_size: usize,
 ) -> Result<PointerValue<'ctx>, BinaryReaderError> {
     // Look up the memory base (as pointer) and bounds (as unsigned integer).
@@ -695,7 +695,7 @@ fn emit_stack_map<'ctx>(
     kind: StackmapEntryKind,
     locals: &[PointerValue],
     state: &State<'ctx>,
-    _ctx: &mut CtxType<'ctx>,
+    _ctx: &mut CtxType<'_, 'ctx>,
     opcode_offset: usize,
 ) {
     let stackmap_id = target.entries.len();
@@ -870,7 +870,7 @@ pub struct LLVMFunctionCodeGenerator<'ctx> {
     signatures: Map<SigIndex, FunctionType<'ctx>>,
     locals: Vec<PointerValue<'ctx>>, // Contains params and locals
     num_params: usize,
-    ctx: Option<CtxType<'ctx>>,
+    ctx: Option<CtxType<'static, 'ctx>>,
     unreachable_depth: usize,
     stackmaps: Rc<RefCell<StackmapRegistry>>,
     index: usize,

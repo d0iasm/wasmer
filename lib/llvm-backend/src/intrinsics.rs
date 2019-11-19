@@ -590,10 +590,10 @@ struct ImportedFuncCache<'ctx> {
     ctx_ptr: PointerValue<'ctx>,
 }
 
-pub struct CtxType<'ctx> {
+pub struct CtxType<'a, 'ctx> {
     ctx_ptr_value: PointerValue<'ctx>,
 
-    info: &'ctx ModuleInfo,
+    info: &'a ModuleInfo,
     cache_builder: Builder<'ctx>,
 
     cached_signal_mem: Option<PointerValue<'ctx>>,
@@ -609,12 +609,12 @@ fn offset_to_index(offset: u8) -> u32 {
     (offset as usize / ::std::mem::size_of::<usize>()) as u32
 }
 
-impl<'ctx> CtxType<'ctx> {
+impl<'a, 'ctx> CtxType<'a, 'ctx> {
     pub fn new(
-        info: &'ctx ModuleInfo,
+        info: &'a ModuleInfo,
         func_value: &FunctionValue<'ctx>,
         cache_builder: Builder<'ctx>,
-    ) -> CtxType<'ctx> {
+    ) -> CtxType<'a, 'ctx> {
         CtxType {
             ctx_ptr_value: func_value.get_nth_param(0).unwrap().into_pointer_value(),
 
@@ -631,11 +631,11 @@ impl<'ctx> CtxType<'ctx> {
         }
     }
 
-    pub fn basic(&self) -> BasicValueEnum {
+    pub fn basic(&self) -> BasicValueEnum<'ctx> {
         self.ctx_ptr_value.as_basic_value_enum()
     }
 
-    pub fn signal_mem(&mut self) -> PointerValue {
+    pub fn signal_mem(&mut self) -> PointerValue<'ctx> {
         if let Some(x) = self.cached_signal_mem {
             return x;
         }
@@ -660,8 +660,8 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: MemoryIndex,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
-    ) -> MemoryCache {
+        module: Rc<RefCell<Module<'ctx>>>,
+    ) -> MemoryCache<'ctx> {
         let (cached_memories, info, ctx_ptr_value, cache_builder) = (
             &mut self.cached_memories,
             self.info,
@@ -781,7 +781,7 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: TableIndex,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
     ) -> (PointerValue<'ctx>, PointerValue<'ctx>) {
         let (cached_tables, info, ctx_ptr_value, cache_builder) = (
             &mut self.cached_tables,
@@ -864,7 +864,7 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: TableIndex,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
         builder: &Builder<'ctx>,
     ) -> (PointerValue<'ctx>, IntValue<'ctx>) {
         let (ptr_to_base_ptr, ptr_to_bounds) =
@@ -895,7 +895,7 @@ impl<'ctx> CtxType<'ctx> {
         index: LocalFuncIndex,
         fn_ty: FunctionType<'ctx>,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
         builder: &Builder<'ctx>,
     ) -> PointerValue<'ctx> {
         let local_func_array_ptr_ptr = unsafe {
@@ -981,7 +981,7 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: GlobalIndex,
         intrinsics: &'ctx Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
     ) -> GlobalCache<'ctx> {
         let (cached_globals, ctx_ptr_value, info, cache_builder) = (
             &mut self.cached_globals,
@@ -1083,7 +1083,7 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: ImportedFuncIndex,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
     ) -> (PointerValue<'ctx>, PointerValue<'ctx>) {
         let (cached_imported_functions, ctx_ptr_value, cache_builder) = (
             &mut self.cached_imported_functions,
@@ -1155,7 +1155,7 @@ impl<'ctx> CtxType<'ctx> {
         &mut self,
         index: usize,
         intrinsics: &Intrinsics<'ctx>,
-        module: Rc<RefCell<Module>>,
+        module: Rc<RefCell<Module<'ctx>>>,
         builder: &Builder<'ctx>,
     ) -> PointerValue<'ctx> {
         assert!(index < INTERNALS_SIZE);
@@ -1190,7 +1190,7 @@ impl<'ctx> CtxType<'ctx> {
 // Given an instruction that operates on memory, mark the access as not aliasing
 // other memory accesses which have a different (label, index) pair.
 pub fn tbaa_label<'ctx>(
-    module: Rc<RefCell<Module>>,
+    module: Rc<RefCell<Module<'ctx>>>,
     intrinsics: &Intrinsics<'ctx>,
     label: &str,
     instruction: InstructionValue<'ctx>,
